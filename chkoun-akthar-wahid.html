@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شكون أكثر واحد؟ - النسخة الكاملة</title>
+    
+    <!-- Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #02020c;
+            color: white;
+            font-family: 'Tajawal', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .font-display { font-family: 'Outfit', 'Tajawal', sans-serif; }
+        
+        .glass-card {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 2.5rem;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .bg-grid {
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 44px 44px;
+        }
+
+        .text-cyan { color: #00f5ff; }
+        .text-pink { color: #ff2d55; }
+        .text-gold { color: #FFD700; }
+        
+        .bg-cyan { background-color: #00f5ff; }
+        .bg-pink { background-color: #ff2d55; }
+        .bg-gold { background-color: #FFD700; }
+
+        @keyframes move {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-20px, 40px) scale(1.1); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useMemo, useRef } = React;
+        const { motion, AnimatePresence } = FramerMotion;
+
+        // --- Sound Manager ---
+        const sounds = {
+            play: (name) => {
+                const urls = {
+                    pop: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3',
+                    success: 'https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3',
+                    error: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
+                    click: 'https://www.soundjay.com/buttons/sounds/button-4.mp3',
+                    win: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+                };
+                const audio = new Audio(urls[name]);
+                audio.volume = 0.4;
+                audio.play().catch(() => {});
+            }
+        };
+
+        // --- Constants ---
+        const CATS = {
+            friends: { id: 'friends', emoji: "👬", label: "الصحاب", color: "#f39c12" },
+            family: { id: 'family', emoji: "👨‍👩‍👧‍👦", label: "العايلة", color: "#2ecc71" },
+            couples: { id: 'couples', emoji: "💑", label: "الكوبل", color: "#e84393" },
+            challenge: { id: 'challenge', emoji: "🎯", label: "تحدي", color: "#ff6b35" },
+            work: { id: 'work', emoji: "🧠", label: "تعرفني؟", color: "#3498db" },
+            spicy: { id: 'spicy', emoji: "🔥", label: "جريء", color: "#e74c3c" }
+        };
+
+        const BASE_Q = {
+            friends: ["شكون أكثر واحد يڨول 'أنا جاي' وهو مازال في الدار؟", "شكون اللي دايمن يتأخر على كل موعد؟", "شكون أكثر واحد يبالغ في حكاياته؟", "شكون أكثر واحد يضحك في وقت جدي؟"],
+            family: ["شكون أكثر واحد يسرق من الثلاجة بالليل؟", "شكون اللي يقلب أسرع شيء في التلفزة؟", "شكون اللي دايما راقد؟", "شكون اللي يعرف يطيب أحسن واحد؟"],
+            challenge: ["قلّد صوت حيوان لمدة 10 ثواني 🐸", "ارقص 15 ثانية بدون موسيقى 💃", "قلّد شخص من المجموعة بدون ما تسمي اسمه 🎭"],
+            work: ["شكون يعرف إيش خوفي السري؟", "شكون يعرف إيش الشيء اللي يجنني؟"],
+            spicy: ["شكون اللي جريء أكثر؟", "شكون اللي يكذب أكثر؟"],
+            couples: ["شكون اللي يقلق أكثر؟", "شكون اللي يغير أكثر؟"]
+        };
+
+        // --- Components ---
+        const Background = () => (
+            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+                <div className="absolute inset-0 bg-grid opacity-10" />
+                <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-pink opacity-10 blur-[100px] rounded-full animate-pulse" style={{ animation: 'move 20s infinite' }} />
+                <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-cyan opacity-10 blur-[100px] rounded-full animate-pulse" style={{ animation: 'move 15s infinite reverse' }} />
+            </div>
+        );
+
+        const App = () => {
+            const [screen, setScreen] = useState('home');
+            const [players, setPlayers] = useState(['أنت', 'صاحبك 1', 'صاحبك 2']);
+            const [currentCat, setCurrentCat] = useState('friends');
+            const [currentQ, setCurrentQ] = useState("");
+            const [target, setTarget] = useState("");
+            const [scores, setScores] = useState({});
+
+            const startGame = () => {
+                sounds.play('click');
+                const qs = BASE_Q[currentCat];
+                setCurrentQ(qs[Math.floor(Math.random() * qs.length)]);
+                setTarget(players[Math.floor(Math.random() * players.length)]);
+                setScreen('game');
+            };
+
+            const vote = (name) => {
+                sounds.play('pop');
+                setScores(s => ({ ...s, [name]: (s[name] || 0) + 10 }));
+                const qs = BASE_Q[currentCat];
+                setCurrentQ(qs[Math.floor(Math.random() * qs.length)]);
+                setTarget(players[Math.floor(Math.random() * players.length)]);
+            };
+
+            return (
+                <div className="min-h-screen relative p-4 pb-20">
+                    <Background />
+                    
+                    <main className="relative z-10 max-w-[500px] mx-auto pt-10">
+                        <AnimatePresence mode="wait">
+                            {screen === 'home' && (
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                    <div className="text-center py-6">
+                                        <h1 className="text-6xl font-black font-display bg-gradient-to-br from-yellow-400 via-pink-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-2xl">شكون أكثر<br/>واحد؟</h1>
+                                        <p className="text-white/40 mt-2 font-bold tracking-widest text-xs uppercase">The Ultimate Party Game</p>
+                                    </div>
+
+                                    <div className="glass-card p-6 space-y-6">
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {Object.keys(CATS).map(id => (
+                                                <button 
+                                                    key={id} 
+                                                    onClick={() => { sounds.play('click'); setCurrentCat(id); }}
+                                                    className={`flex flex-col items-center p-4 rounded-[2rem] border transition-all h-28 justify-center ${currentCat === id ? 'bg-white/10 border-cyan' : 'border-white/5 bg-black/20'}`}
+                                                >
+                                                    <span className="text-3xl mb-1">{CATS[id].emoji}</span>
+                                                    <span className="text-[10px] font-black opacity-80">{CATS[id].label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        
+                                        <button onClick={startGame} className="w-full py-5 bg-gradient-to-r from-pink to-red-600 rounded-[2rem] text-xl font-black shadow-xl shadow-pink/30 hover:scale-[1.02] active:scale-95 transition-all">ابدأ اللعب</button>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {screen === 'game' && (
+                                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
+                                    <div className="glass-card p-8 space-y-8">
+                                        <div className="bg-black/60 rounded-[2rem] p-10 text-center border border-white/5 relative overflow-hidden">
+                                            <p className="text-2xl font-black leading-relaxed">{currentQ}</p>
+                                        </div>
+                                        
+                                        <div className="bg-pink/10 border border-pink/20 rounded-full py-3 text-center">
+                                            <span className="text-white/50">المستهدف:</span> <span className="text-pink font-black text-lg">{target}</span>
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            {players.map(p => (
+                                                <button 
+                                                    key={p} 
+                                                    onClick={() => vote(p)}
+                                                    className="flex justify-between items-center bg-white/5 border border-white/5 p-5 rounded-[1.5rem] hover:bg-pink/10 transition-all font-black"
+                                                >
+                                                    <span>{p}</span>
+                                                    <span className="text-gold">{scores[p] || 0}★</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        
+                                        <button onClick={() => setScreen('home')} className="w-full py-2 text-white/20 font-bold">إنهاء</button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </main>
+
+                    {/* Simple Bottom Nav */}
+                    <nav className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-3xl border-t border-white/5 p-6 flex justify-around items-center z-50">
+                        <i data-lucide="home" className={screen === 'home' ? 'text-pink' : 'text-white/20'} onClick={() => setScreen('home')}></i>
+                        <i data-lucide="circle-play" className={screen === 'game' ? 'text-pink' : 'text-white/20'} onClick={() => screen === 'home' && startGame()}></i>
+                        <i data-lucide="trophy" className="text-white/20"></i>
+                        <i data-lucide="globe" className="text-white/20"></i>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        
+        // Initialize Lucide Icons
+        setTimeout(() => lucide.createIcons(), 500);
+    </script>
+</body>
+</html>
